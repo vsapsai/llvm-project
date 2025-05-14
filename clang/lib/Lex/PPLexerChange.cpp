@@ -22,6 +22,7 @@
 #include "llvm/Support/MemoryBufferRef.h"
 #include "llvm/Support/Path.h"
 #include <optional>
+#include <unistd.h> // for fork
 
 using namespace clang;
 
@@ -514,6 +515,31 @@ bool Preprocessor::HandleEndOfFile(Token &Result, bool isEndOfMacro) {
       replayPreambleConditionalStack();
       if (PreambleRecordedPragmaAssumeNonNullLoc.isValid())
         PragmaAssumeNonNullLoc = PreambleRecordedPragmaAssumeNonNullLoc;
+    }
+
+    if (ExitedFromPredefinesFile) {
+      for (size_t CompilationIndex = 0;
+           CompilationIndex < PPOpts.ExperimentalExtraForkCompilations;
+           ++CompilationIndex) {
+        pid_t child_pid = fork();
+        if (child_pid == -1) {
+          llvm::errs() << "fork failed\n";
+          break;
+        }
+
+        if (child_pid == 0) {
+          // Child process.
+          break; // out of `for` loop and continue compilation
+        } else {
+          // Parent process.
+          int status;
+          pid_t waited_pid = waitpid(child_pid, &status, 0);
+          if (waited_pid == -1) {
+            llvm::errs() << "waitpid failed\n";
+            break;
+          }
+        }
+      }
     }
 
     if (!isEndOfMacro && CurPPLexer && FoundPCHThroughHeader &&

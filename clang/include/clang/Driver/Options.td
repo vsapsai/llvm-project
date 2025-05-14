@@ -4707,6 +4707,10 @@ def relocatable_pch : Flag<["-", "--"], "relocatable-pch">,
 def verify_pch : Flag<["-"], "verify-pch">, Group<Action_Group>,
   Visibility<[ClangOption, CC1Option]>,
   HelpText<"Load and verify that a pre-compiled header file is not stale">;
+def : Separate<["-"], "experimental-extra-fork-compilations">,
+  Visibility<[CC1Option]>,
+  HelpText<"How many more times to compile a file after includes from the command line are handled">,
+  MarshallingInfoInt<PreprocessorOpts<"ExperimentalExtraForkCompilations">>;
 def init : Separate<["-"], "init">;
 def install__name : Separate<["-"], "install_name">;
 def iprefix : JoinedOrSeparate<["-"], "iprefix">, Group<clang_i_Group>,

@@ -125,6 +125,11 @@ public:
   /// deserialized, and we emit an error if they are; for testing purposes.
   std::set<std::string> DeserializedPCHDeclsToErrorOn;
 
+  /// How many compiler processes to `fork` after parsing the predefines.
+  ///
+  /// Useful for testing only as we are compiling the same file multiple times.
+  unsigned ExperimentalExtraForkCompilations = 0;
+
   /// If non-zero, the implicit PCH include is actually a precompiled
   /// preamble that covers this number of bytes in the main source file.
   ///
