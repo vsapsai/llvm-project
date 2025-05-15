@@ -1,44 +1,38 @@
-# The LLVM Compiler Infrastructure
+Experiment with a different build model and see if it provides any benefits.
 
-[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/llvm/llvm-project/badge)](https://securityscorecards.dev/viewer/?uri=github.com/llvm/llvm-project)
-[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/8273/badge)](https://www.bestpractices.dev/projects/8273)
-[![libc++](https://github.com/llvm/llvm-project/actions/workflows/libcxx-build-and-test.yaml/badge.svg?branch=main&event=schedule)](https://github.com/llvm/llvm-project/actions/workflows/libcxx-build-and-test.yaml?query=event%3Aschedule)
+Jussi Pakkanen has [proposed an idea](https://nibblestew.blogspot.com/2024/12/compiler-daemon-thought-experiment.html)
+where you start a compiler "server" that parses a precompiled header and stops.
+Then for each input file the "server" will `fork` a new process that will
+perform the actual compilation. The compilation should be faster because each
+compilation process starts with the expensive-to-parse part already done and
+doesn't need to repeat it again. The proposal outlines how different processes
+can communicate with each other but we'll ignore that part for now for
+simplicity.
 
-Welcome to the LLVM project!
+Implementing the full proposal will take some time, so I'm suggesting a simple
+experiment to evaluate this approach. Instead of building a full project we'll
+compile a single file multiple times where each additional compilation starts
+after a precompiled header is handled. We can compare this time to compiling
+the same file in a loop and see how much state sharing can get us.
 
-This repository contains the source code for LLVM, a toolkit for the
-construction of highly optimized compilers, optimizers, and run-time
-environments.
+## Experimental data
 
-The LLVM project has multiple components. The core of the project is
-itself called "LLVM". This contains all of the tools, libraries, and header
-files needed to process intermediate representations and convert them into
-object files. Tools include an assembler, disassembler, bitcode analyzer, and
-bitcode optimizer.
+### Small Objective-C file
+Tested on Document.m from TextEdit sample. Precompiled header contains only
+```
+#import <Cocoa/Cocoa.h>
+```
 
-C-like languages use the [Clang](https://clang.llvm.org/) frontend. This
-component compiles C, C++, Objective-C, and Objective-C++ code into LLVM bitcode
--- and from there into object files, using LLVM.
+Run compilations for 20 times (`-Xclang -experimental-extra-fork-compilations -Xclang 19`). Each number is an average of 7 runs.
 
-Other components include:
-the [libc++ C++ standard library](https://libcxx.llvm.org),
-the [LLD linker](https://lld.llvm.org), and more.
+|                                                     | Compile in loop | Compile with `fork` |
+|-----------------------------------------------------|-----------------|---------------------|
+| No boosts                                           |           9.58s |               9.45s |
+| With PCH                                            |           2.27s |               1.96s |
+| With PCH (PCH creation is included in measurements) |           2.76s |               2.58s |
+| With `-include` prefix header                       |           9.56s |               3.03s |
 
-## Getting the Source Code and Building LLVM
-
-Consult the
-[Getting Started with LLVM](https://llvm.org/docs/GettingStarted.html#getting-the-source-code-and-building-llvm)
-page for information on building and running LLVM.
-
-For information on how to contribute to the LLVM project, please take a look at
-the [Contributing to LLVM](https://llvm.org/docs/Contributing.html) guide.
-
-## Getting in touch
-
-Join the [LLVM Discourse forums](https://discourse.llvm.org/), [Discord
-chat](https://discord.gg/xS7Z362),
-[LLVM Office Hours](https://llvm.org/docs/GettingInvolved.html#office-hours) or
-[Regular sync-ups](https://llvm.org/docs/GettingInvolved.html#online-sync-ups).
-
-The LLVM project has adopted a [code of conduct](https://llvm.org/docs/CodeOfConduct.html) for
-participants to all modes of communication within the project.
+As we can see, there is around 10% speedup when we use `fork` approach. And
+this is for the code that benefits from a precompiled header significantly.
+The surprising finding for me is that using `-include` with the textual header
+is slower than using a precompiled header.
