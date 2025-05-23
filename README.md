@@ -36,3 +36,36 @@ As we can see, there is around 10% speedup when we use `fork` approach. And
 this is for the code that benefits from a precompiled header significantly.
 The surprising finding for me is that using `-include` with the textual header
 is slower than using a precompiled header.
+
+### Bigger C++17 file
+Tested on [LTO.cpp](https://github.com/vsapsai/llvm-project/blob/605c7b2c3be4debc4450313fe5e928c915bf3a98/llvm/lib/LTO/LTO.cpp)
+with `-O2`. Precompiled header contains
+```
+#include <memory>
+#include <random>
+#include <chrono>
+#include <algorithm>
+#include <optional>
+#include <list>
+#include <queue>
+#include <set>
+#include <vector>
+#include <thread>
+#include <numeric>
+```
+
+Run compilations for 5 times (`-Xclang -experimental-extra-fork-compilations -Xclang 4`). Each number is an average of 7 runs.
+
+|                                                     | Compile in loop | Compile with `fork` |
+|-----------------------------------------------------|-----------------|---------------------|
+| No boosts                                           |          34.12s |              36.09s |
+| With PCH                                            |          33.31s |              34.92s |
+| With PCH (PCH creation is included in measurements) |          34.10s |              36.53s |
+| With `-include` prefix header                       |          34.79s |              35.14s |
+| `-O0` with no boosts                                |          24.98s |              25.65s |
+| `-O0` with PCH                                      |          23.58s |              24.53s |
+
+This time `fork` approach doesn't give you anything. And a precompiled header
+impact is way smaller (despite my efforts to tailor it to LTO.cpp). PCH
+generation is pretty fast (~0.5s), so I believe in this case the complexity
+comes not from raw parsing but from other activities.
