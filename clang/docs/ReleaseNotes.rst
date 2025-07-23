@@ -800,6 +800,13 @@ Bug Fixes in This Version
   declaration statements. Clang now emits a warning for these patterns. (#GH141659)
 - Fixed false positives for redeclaration errors of using enum in
   nested scopes. (#GH147495)
+- Fixed a failed assertion with an operator call expression which comes from a
+  macro expansion when performing analysis for nullability attributes. (#GH138371)
+- Fixed a concept equivalent checking crash due to untransformed constraint expressions. (#GH146614)
+- Fixed a crash in `clang-scan-deps` when a module with the same name is found
+  in different locations (#GH134404, #GH146976).
+- Fix a crash when marco name is empty in ``#pragma push_macro("")`` or
+  ``#pragma pop_macro("")``. (GH149762).
 
 Bug Fixes to Compiler Builtins
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
