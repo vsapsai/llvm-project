@@ -120,6 +120,14 @@ public:
   bool isNotFound() const { return Val.getInt() == NotFound; }
 };
 
+enum class InputFilesValidation {
+  NotStarted = 0,
+  Disabled,
+  SkippedInBuildSession,
+  UserFiles,
+  AllFiles,
+};
+
 /// Information about a module that has been loaded by the ASTReader.
 ///
 /// Each instance of the Module class corresponds to a single AST file, which
@@ -275,6 +283,8 @@ public:
   ///
   /// The time is specified in seconds since the start of the Epoch.
   uint64_t InputFilesValidationTimestamp = 0;
+
+  InputFilesValidation InputFilesValidationStatus = InputFilesValidation::NotStarted;
 
   // === Source Locations ===
 
