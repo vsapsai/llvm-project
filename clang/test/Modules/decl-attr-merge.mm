@@ -12,6 +12,10 @@
 // RUN:   -fmodules-cache-path=%t.dir/icache -triple arm64-apple-ios12.0 \
 // RUN:   -I%t.dir/headers %t.dir/main-ios.m -emit-llvm -o - | FileCheck %s --check-prefix=CHECK-IOS
 
+// RUN: %clang_cc1 -fmodules -fimplicit-module-maps \
+// RUN:   -fmodules-cache-path=%t.dir/wcache -triple arm64-apple-watchos7.0 \
+// RUN:   -I%t.dir/headers %t.dir/main-watchos.m -fsyntax-only -verify
+
 //--- headers/a.h
 
 __attribute__((availability(macos,introduced=10.16)))
@@ -20,9 +24,17 @@ __attribute__((availability(ios,introduced=14.0)))
 - (instancetype)self;
 @end
 
+void unavailableSomePlatforms(void) __attribute__((availability(ios,introduced=6.0)));
+void deprecatedFn(void) __attribute__((availability(watchos,introduced=2.0)));
+
 //--- headers/b.h
 
 @class INIntent;
+
+//--- headers/c.h
+
+void unavailableSomePlatforms(void) __attribute__((availability(watchos,unavailable)));
+void deprecatedFn(void) __attribute__((availability(watchos,deprecated=6.0)));
 
 //--- headers/module.modulemap
 
@@ -32,6 +44,10 @@ module A {
 
 module B {
   header "b.h"
+}
+
+module C {
+  header "c.h"
 }
 
 //--- main-macos.m
@@ -57,3 +73,16 @@ int main() {
 @end
 
 // CHECK-IOS: @"OBJC_CLASS_$_INIntent" = extern_weak
+
+//--- main-watchos.m
+
+#import <c.h>
+#import <a.h> // availability in a.h shouldn't hide previously seen availability in c.h
+
+void test(void) {
+  unavailableSomePlatforms(); // expected-error {{'unavailableSomePlatforms' is unavailable: not available on watchOS}}
+  // expected-note@c.h:2 {{'unavailableSomePlatforms' has been explicitly marked unavailable here}}
+
+  deprecatedFn(); // expected-warning {{'deprecatedFn' is deprecated: first deprecated in watchOS 6.0}}
+  // expected-note@c.h:3 {{'deprecatedFn' has been explicitly marked deprecated here}}
+}

@@ -4989,6 +4989,14 @@ public:
   bool CheckAttrTarget(const ParsedAttr &CurrAttr);
   bool CheckAttrNoArgs(const ParsedAttr &CurrAttr);
 
+  static AvailabilityAttr *mergeAvailabilityAttr(
+      ASTContext &Context, DiagnosticsEngine &Diags, NamedDecl *D,
+      const AttributeCommonInfo &CI, const IdentifierInfo *Platform,
+      bool Implicit, VersionTuple Introduced, VersionTuple Deprecated,
+      VersionTuple Obsoleted, bool IsUnavailable, StringRef Message,
+      bool IsStrict, StringRef Replacement, AvailabilityMergeKind AMK,
+      int Priority, const IdentifierInfo *IIEnvironment,
+      const IdentifierInfo *InferredPlatformII = nullptr);
   AvailabilityAttr *
   mergeAvailabilityAttr(NamedDecl *D, const AttributeCommonInfo &CI,
                         const IdentifierInfo *Platform, bool Implicit,

@@ -50,6 +50,7 @@
 #include "clang/Basic/SourceLocation.h"
 #include "clang/Basic/Specifiers.h"
 #include "clang/Sema/IdentifierResolver.h"
+#include "clang/Sema/Sema.h"
 #include "clang/Serialization/ASTBitCodes.h"
 #include "clang/Serialization/ASTRecordReader.h"
 #include "clang/Serialization/ContinuousRangeMap.h"
@@ -3645,11 +3646,16 @@ void mergeInheritableAttributes(ASTReader &Reader, Decl *D, Decl *Previous) {
     D->addAttr(NewAttr);
   }
 
-  if (!D->hasAttr<AvailabilityAttr>()) {
-    for (const auto *AA : Previous->specific_attrs<AvailabilityAttr>()) {
-      NewAttr = AA->clone(Context);
-      NewAttr->setInherited(true);
-      D->addAttr(NewAttr);
+  for (const auto *AA : Previous->specific_attrs<AvailabilityAttr>()) {
+    if (AvailabilityAttr *NewAA = Sema::mergeAvailabilityAttr(
+            Context, Reader.getDiags(), cast<NamedDecl>(D), *AA,
+            AA->getPlatform(), /*Implicit=*/false, AA->getIntroduced(),
+            AA->getDeprecated(), AA->getObsoleted(), AA->getUnavailable(),
+            AA->getMessage(), AA->getStrict(), AA->getReplacement(),
+            AvailabilityMergeKind::None, AA->getPriority(),
+            AA->getEnvironment())) {
+      NewAA->setInherited(true);
+      D->addAttr(NewAA);
     }
   }
 }

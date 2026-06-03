@@ -2376,7 +2376,7 @@ static void handleAttrWithMessage(Sema &S, Decl *D, const ParsedAttr &AL) {
   D->addAttr(::new (S.Context) AttrTy(S.Context, AL, Str));
 }
 
-static bool checkAvailabilityAttr(Sema &S, SourceRange Range,
+static bool checkAvailabilityAttr(DiagnosticsEngine &Diags, SourceRange Range,
                                   const IdentifierInfo *Platform,
                                   VersionTuple Introduced,
                                   VersionTuple Deprecated,
@@ -2390,7 +2390,7 @@ static bool checkAvailabilityAttr(Sema &S, SourceRange Range,
   // of these steps are needed).
   if (!Introduced.empty() && !Deprecated.empty() &&
       !(Introduced <= Deprecated)) {
-    S.Diag(Range.getBegin(), diag::warn_availability_version_ordering)
+    Diags.Report(Range.getBegin(), diag::warn_availability_version_ordering)
       << 1 << PlatformName << Deprecated.getAsString()
       << 0 << Introduced.getAsString();
     return true;
@@ -2398,7 +2398,7 @@ static bool checkAvailabilityAttr(Sema &S, SourceRange Range,
 
   if (!Introduced.empty() && !Obsoleted.empty() &&
       !(Introduced <= Obsoleted)) {
-    S.Diag(Range.getBegin(), diag::warn_availability_version_ordering)
+    Diags.Report(Range.getBegin(), diag::warn_availability_version_ordering)
       << 2 << PlatformName << Obsoleted.getAsString()
       << 0 << Introduced.getAsString();
     return true;
@@ -2406,7 +2406,7 @@ static bool checkAvailabilityAttr(Sema &S, SourceRange Range,
 
   if (!Deprecated.empty() && !Obsoleted.empty() &&
       !(Deprecated <= Obsoleted)) {
-    S.Diag(Range.getBegin(), diag::warn_availability_version_ordering)
+    Diags.Report(Range.getBegin(), diag::warn_availability_version_ordering)
       << 2 << PlatformName << Obsoleted.getAsString()
       << 1 << Deprecated.getAsString();
     return true;
@@ -2432,9 +2432,22 @@ static bool versionsMatch(const VersionTuple &X, const VersionTuple &Y,
 
   return false;
 }
-
 AvailabilityAttr *Sema::mergeAvailabilityAttr(
     NamedDecl *D, const AttributeCommonInfo &CI, const IdentifierInfo *Platform,
+    bool Implicit, VersionTuple Introduced, VersionTuple Deprecated,
+    VersionTuple Obsoleted, bool IsUnavailable, StringRef Message,
+    bool IsStrict, StringRef Replacement, AvailabilityMergeKind AMK,
+    int Priority, const IdentifierInfo *Environment,
+    const IdentifierInfo *InferredPlatformII) {
+  return mergeAvailabilityAttr(Context, Diags, D, CI, Platform, Implicit,
+                               Introduced, Deprecated, Obsoleted, IsUnavailable,
+                               Message, IsStrict, Replacement, AMK, Priority,
+                               Environment, InferredPlatformII);
+}
+
+AvailabilityAttr *Sema::mergeAvailabilityAttr(
+    ASTContext &Context, DiagnosticsEngine &Diags, NamedDecl *D,
+    const AttributeCommonInfo &CI, const IdentifierInfo *Platform,
     bool Implicit, VersionTuple Introduced, VersionTuple Deprecated,
     VersionTuple Obsoleted, bool IsUnavailable, StringRef Message,
     bool IsStrict, StringRef Replacement, AvailabilityMergeKind AMK,
@@ -2539,8 +2552,8 @@ AvailabilityAttr *Sema::mergeAvailabilityAttr(
           }
 
           if (Which == -1) {
-            Diag(OldAA->getLocation(),
-                 diag::warn_mismatched_availability_override_unavail)
+            Diags.Report(OldAA->getLocation(),
+                         diag::warn_mismatched_availability_override_unavail)
                 << AvailabilityAttr::getPrettyPlatformName(Platform->getName())
                 << (AMK == AvailabilityMergeKind::Override);
           } else if (Which != 1 && AMK == AvailabilityMergeKind::
@@ -2553,20 +2566,21 @@ AvailabilityAttr *Sema::mergeAvailabilityAttr(
             ++i;
             continue;
           } else {
-            Diag(OldAA->getLocation(),
-                 diag::warn_mismatched_availability_override)
+            Diags.Report(OldAA->getLocation(),
+                         diag::warn_mismatched_availability_override)
                 << Which
                 << AvailabilityAttr::getPrettyPlatformName(Platform->getName())
                 << FirstVersion.getAsString() << SecondVersion.getAsString()
                 << (AMK == AvailabilityMergeKind::Override);
           }
           if (AMK == AvailabilityMergeKind::Override)
-            Diag(CI.getLoc(), diag::note_overridden_method);
+            Diags.Report(CI.getLoc(), diag::note_overridden_method);
           else
-            Diag(CI.getLoc(), diag::note_protocol_method);
+            Diags.Report(CI.getLoc(), diag::note_protocol_method);
         } else {
-          Diag(OldAA->getLocation(), diag::warn_mismatched_availability);
-          Diag(CI.getLoc(), diag::note_previous_attribute);
+          Diags.Report(OldAA->getLocation(),
+                       diag::warn_mismatched_availability);
+          Diags.Report(CI.getLoc(), diag::note_previous_attribute);
         }
 
         Attrs.erase(Attrs.begin() + i);
@@ -2585,7 +2599,7 @@ AvailabilityAttr *Sema::mergeAvailabilityAttr(
       if (MergedObsoleted2.empty())
         MergedObsoleted2 = OldObsoleted;
 
-      if (checkAvailabilityAttr(*this, OldAA->getRange(), Platform,
+      if (checkAvailabilityAttr(Diags, OldAA->getRange(), Platform,
                                 MergedIntroduced2, MergedDeprecated2,
                                 MergedObsoleted2)) {
         Attrs.erase(Attrs.begin() + i);
@@ -2608,7 +2622,7 @@ AvailabilityAttr *Sema::mergeAvailabilityAttr(
 
   // Only create a new attribute if !OverrideOrImpl, but we want to do
   // the checking.
-  if (!checkAvailabilityAttr(*this, CI.getRange(), Platform, MergedIntroduced,
+  if (!checkAvailabilityAttr(Diags, CI.getRange(), Platform, MergedIntroduced,
                              MergedDeprecated, MergedObsoleted) &&
       !OverrideOrImpl) {
     auto *Avail = ::new (Context) AvailabilityAttr(
