@@ -60,6 +60,84 @@ CowCompilerInvocation ModuleDeps::getUnderlyingCompilerInvocation() const {
   return *std::get_if<CowCompilerInvocation>(&BuildInfo);
 }
 
+namespace {
+static void indent(llvm::raw_ostream &OS, unsigned Indent) {
+  for (unsigned I = 0; I < Indent; ++I)
+    OS << ' ';
+}
+}
+
+void ModuleDeps::dump() const { dump(llvm::errs()); }
+
+void ModuleDeps::dump(llvm::raw_ostream &OS) const {
+  unsigned Indent = 0;
+  indent(OS, Indent); OS << "ModuleDeps" << '\n';
+  Indent += 2;
+
+  indent(OS, Indent); OS << "ID: { Name=\"" << ID.ModuleName << "\""
+                         << ", ContextHash=\"" << ID.ContextHash << "\" }\n";
+
+  indent(OS, Indent); OS << "IsSystem: " << (IsSystem ? "true" : "false") << '\n';
+  indent(OS, Indent); OS << "ModuleMapIsPrivate: " << (ModuleMapIsPrivate ? "true" : "false") << '\n';
+  indent(OS, Indent); OS << "IsInStableDirectories: "
+                         << (IsInStableDirectories ? "true" : "false") << '\n';
+  indent(OS, Indent); OS << "IgnoreCWD: " << (IgnoreCWD ? "true" : "false") << '\n';
+
+  indent(OS, Indent); OS << "ClangModuleMapFile: \"" << ClangModuleMapFile << "\"\n";
+
+  indent(OS, Indent); OS << "ModuleMapFileDeps: [\n";
+  for (const auto &MM : ModuleMapFileDeps) {
+    indent(OS, Indent + 2); OS << '"' << MM << '"' << '\n';
+  }
+  indent(OS, Indent); OS << "]\n";
+
+  indent(OS, Indent); OS << "PrebuiltModuleDeps: [\n";
+  for (const auto &PM : PrebuiltModuleDeps) {
+    indent(OS, Indent + 2);
+    OS << "{ ModuleName=\"" << PM.ModuleName
+       << "\", PCMFile=\"" << PM.PCMFile
+       << "\", ModuleMapFile=\"" << PM.ModuleMapFile << "\" }\n";
+  }
+  indent(OS, Indent); OS << "]\n";
+
+  indent(OS, Indent); OS << "ClangModuleDeps: [\n";
+  for (const auto &MID : ClangModuleDeps) {
+    indent(OS, Indent + 2);
+    OS << "{ Name=\"" << MID.ModuleName << "\", ContextHash=\"" << MID.ContextHash << "\" }\n";
+  }
+  indent(OS, Indent); OS << "]\n";
+
+  indent(OS, Indent); OS << "LinkLibraries: [\n";
+  for (const auto &LL : LinkLibraries) {
+    indent(OS, Indent + 2);
+    OS << "{ Name=\"" << LL.Library << "\", IsFramework=" << (LL.IsFramework ? "true" : "false") << " }\n";
+  }
+  indent(OS, Indent); OS << "]\n";
+
+  indent(OS, Indent); OS << "FileDepsBaseDir: \"" << FileDepsBaseDir << "\"\n";
+
+  indent(OS, Indent); OS << "FileDeps: [\n";
+  for (const auto &FD : FileDeps) {
+    indent(OS, Indent + 2); OS << '"' << FD << '"' << '\n';
+  }
+  indent(OS, Indent); OS << "]\n";
+
+  indent(OS, Indent); OS << "BuildArgs: [\n";
+  if (std::holds_alternative<std::monostate>(BuildInfo)) {
+    indent(OS, Indent + 2); OS << "None\n";
+  } else {
+    std::vector<std::string> BuildArgs;
+    if (const auto *CI = std::get_if<CowCompilerInvocation>(&BuildInfo))
+      BuildArgs = CI->getCC1CommandLine();
+    else
+      BuildArgs = std::get<std::vector<std::string>>(BuildInfo);
+    for (const auto &Arg : BuildArgs) {
+      indent(OS, Indent + 2); OS << '"' << Arg << '"' << '\n';
+    }
+  }
+  indent(OS, Indent); OS << "]\n";
+}
+
 static void
 optimizeHeaderSearchOpts(HeaderSearchOptions &Opts, ASTReader &Reader,
                          const serialization::ModuleFile &MF,

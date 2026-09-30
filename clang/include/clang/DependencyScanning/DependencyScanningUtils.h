@@ -68,6 +68,12 @@ struct TranslationUnitDeps {
 
   /// Deprecated driver command-line. This will be removed in a future version.
   std::vector<std::string> DriverCommandLine;
+
+  /// Dump this translation unit's dependency information for debugging.
+  void dump() const;
+
+  /// Dump this translation unit's dependency information to the given stream for debugging.
+  void dump(llvm::raw_ostream &OS) const;
 };
 
 class FullDependencyConsumer : public DependencyConsumer {

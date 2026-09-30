@@ -217,6 +217,12 @@ struct ModuleDeps {
   /// the compiler invocation state.
   CowCompilerInvocation getUnderlyingCompilerInvocation() const;
 
+  /// Dump this module's dependency information for debugging.
+  void dump() const;
+
+  /// Dump this module's dependency information to the given stream for debugging.
+  void dump(llvm::raw_ostream &OS) const;
+
 private:
   friend class ModuleDepCollector;
   friend class ModuleDepCollectorPP;
