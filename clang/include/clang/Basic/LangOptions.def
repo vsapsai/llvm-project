@@ -175,6 +175,7 @@ LANGOPT(ModulesErrorRecovery, 1, 1, Benign, "automatically importing modules as 
 LANGOPT(ImplicitModules, 1, 1, Benign, "building modules that are not specified via -fmodule-file")
 LANGOPT(ModulesLocalVisibility, 1, 0, Compatible, "local submodule visibility")
 LANGOPT(ModulesHashErrorDiags, 1, 0, Compatible, "hash out diagnostic errors as part of the module hash")
+LANGOPT(ModulesExperimentalShallowDependency, 1, 0, Benign, "make each module depend only on headers and not on other modules")
 LANGOPT(Static            , 1, 0, Compatible, "__STATIC__ predefined macro (as opposed to __DYNAMIC__)")
 VALUE_LANGOPT(PackStruct  , 32, 0, NotCompatible,
               "default struct packing maximum alignment")

@@ -984,8 +984,23 @@ OptionalFileEntryRef Preprocessor::LookupFile(
   ConstSearchDirIterator CurDirLocal = nullptr;
   ConstSearchDirIterator &CurDir = CurDirArg ? *CurDirArg : CurDirLocal;
 
+#if 1
+  Module *RequestingModule = nullptr;
+  FileID IncluderFID = getSourceManager().getFileID(FilenameLoc);
+  OptionalFileEntryRef IncluderFileEntry = getSourceManager().getFileEntryRefForID(IncluderFID);
+  // Allow building a module when including a header from a modulemap buffer.
+  // TODO: use isWrittenInModuleIncludes when available.
+  if (IncluderFileEntry && llvm::sys::fs::exists("/home/ubuntu/flat-dependencies-flag.txt")) {
+  //if (LangOpts.ModulesExperimentalShallowDependency) {
+    SuggestedModule = nullptr;
+  } else {
+    RequestingModule = getModuleForLocation(
+        FilenameLoc, LangOpts.ModulesValidateTextualHeaderIncludes);
+  }
+#else
   Module *RequestingModule = getModuleForLocation(
       FilenameLoc, LangOpts.ModulesValidateTextualHeaderIncludes);
+#endif
 
   // If the header lookup mechanism may be relative to the current inclusion
   // stack, record the parent #includes.

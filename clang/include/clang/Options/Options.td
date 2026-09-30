@@ -3682,6 +3682,11 @@ defm modules_search_all : BoolFOption<"modules-search-all",
   PosFlag<SetTrue, [], [ClangOption], "Search even non-imported modules to resolve references">,
   NegFlag<SetFalse>, BothFlags<[], [ClangOption, CC1Option, CLOption]>>,
   ShouldParseIf<fmodules.KeyPath>;
+defm modules_experimental_shallow_dependency : BoolFOption<"experimental-modules-shallow-dependency",
+  LangOpts<"ModulesExperimentalShallowDependency">, DefaultFalse,
+  PosFlag<SetTrue, [], [ClangOption], "Experiment with modular dependencies">,
+  NegFlag<SetFalse>, BothFlags<[], [CC1Option]>>,
+  ShouldParseIf<fmodules.KeyPath>;
 defm implicit_modules : BoolFOption<"implicit-modules",
   LangOpts<"ImplicitModules">, DefaultTrue,
   NegFlag<SetFalse, [], [ClangOption, CC1Option]>,
